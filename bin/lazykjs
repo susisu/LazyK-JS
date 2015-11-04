@@ -29,8 +29,44 @@ program
                     process.exit(1);
                     return;
                 }
-                lazy.interpreter.run(filename, src,
-                    new lazy.stream.StdinStream("", false),
+                var buffer = "";
+                var end = false;
+                var resolvers = [];
+                process.stdin.on("readable", () => {
+                    var chunk = process.stdin.read();
+                    if (chunk !== null) {
+                        buffer += chunk;
+                        for (var i = 0; i < resolvers.length; i++) {
+                            resolvers[i][0](buffer.charCodeAt(resolvers[i][1]));
+                        }
+                        resolvers = [];
+                    }
+                });
+                process.stdin.on("end", () => {
+                    end = true;
+                    for (var i = 0; i < resolvers.length; i++) {
+                        resolvers[i][0](0x100);
+                    }
+                    resolvers = [];
+                });
+                function input(index) {
+                    if (index < buffer.length) {
+                        return Promise.resolve(buffer.charCodeAt(index));
+                    }
+                    else if (end) {
+                        console.log("end?");
+                        return Promise.resolve(0x100);
+                    }
+                    else {
+                        return new Promise(resolve => {
+                            resolvers.push([resolve, index]);
+                        });
+                    }
+                }
+                lazy.interpreter.run(
+                    filename,
+                    src,
+                    new lazy.stream.InputStream(input, 0),
                     x => process.stdout.write(x),
                     c => process.exit(c)
                 );
