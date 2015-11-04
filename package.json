@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "description": "Lazy K interpreter",
   "main": "index.js",
+  "directories": {
+    "test": "test",
+    "bin": "bin"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

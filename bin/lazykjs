@@ -1,0 +1,45 @@
+#!/usr/bin/env node
+
+/*
+ * LazyK-JS /bin/lazykjs
+ * copyright (c) 2015 Susisu
+ */
+
+"use strict";
+
+var fs = require("fs");
+
+var program = require("commander");
+
+var lazy = require("../index.js");
+var packageInfo = require("../package.json");
+
+process.title = "lazykjs";
+
+program.version(packageInfo.version, "-v, --version");
+
+program
+    .arguments("<file>")
+    .action(function (filename) {
+        fs.readFile(
+            filename, { "encoding": "utf8" },
+            function (err, src) {
+                if (err) {
+                    putLine(err.toString());
+                    process.exit(1);
+                    return;
+                }
+                lazy.interpreter.run(filename, src,
+                    new lazy.stream.StdinStream("", false),
+                    x => process.stdout.write(x),
+                    c => process.exit(c)
+                );
+            }
+        );
+    });
+
+program.parse(process.argv);
+
+if (program.args.length === 0) {
+    program.help();
+}
