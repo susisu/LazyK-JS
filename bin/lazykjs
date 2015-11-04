@@ -54,7 +54,6 @@ program
                         return Promise.resolve(buffer.charCodeAt(index));
                     }
                     else if (end) {
-                        console.log("end?");
                         return Promise.resolve(0x100);
                     }
                     else {
