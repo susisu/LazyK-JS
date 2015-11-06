@@ -18,7 +18,7 @@ process.title = "lazykjs";
 
 program.version(packageInfo.version, "-v, --version");
 
-program.usage("[options] [file]")
+program.usage("[options] [-] [file]")
 program.option("-e, --eval <program>", "one line of program");
 
 program.parse(process.argv);
@@ -27,32 +27,68 @@ var mode = "help";
 
 if (mode === "help" && program.eval !== undefined) {
     mode = "eval";
-    run("", program.eval);
+    run("", program.eval, stdInputStream());
 }
 
 if (mode === "help" && program.args.length > 0) {
     mode = "file";
-    fs.readFile(
-        program.args[0], { "encoding": "utf8" },
-        function (err, src) {
-            if (err) {
-                console.error(err.toString());
-                process.exit(1);
-                return;
+    if (program.args[0] === "-") {
+        (function () {
+            var buffer = "";
+            
+            process.stdin.on("readable", () => {
+                var chunk = process.stdin.read();
+                if (chunk !== null) {
+                    buffer += chunk;
+                }
+            });
+
+            process.stdin.on("end", () => {
+                run("stdin", buffer, new lazy.stream.StringStream(""));
+            });
+        })();
+    }
+    else {
+        fs.readFile(
+            program.args[0], { "encoding": "utf8" },
+            function (err, src) {
+                if (err) {
+                    console.error(err.toString());
+                    process.exit(1);
+                    return;
+                }
+                run(program.args[0], src, stdInputStream());
             }
-            run(program.args[0], src);
-        }
-    );
+        );
+    }
 }
 
 if (mode === "help") {
     program.help();
 }
 
-function run(name, src) {
+function run(name, src, stream) {
+    try {
+        lazy.interpreter.run(
+            name,
+            src,
+            stream,
+            x => process.stdout.write(x),
+            c => process.exit(c)
+        );
+    }
+    catch (error) {
+        console.error(String(error));
+        process.exit(1);
+        return;
+    }
+}
+
+function stdInputStream() {
     var buffer = "";
     var end = false;
     var resolvers = [];
+    
     process.stdin.on("readable", () => {
         var chunk = process.stdin.read();
         if (chunk !== null) {
@@ -63,6 +99,7 @@ function run(name, src) {
             resolvers = [];
         }
     });
+
     process.stdin.on("end", () => {
         end = true;
         for (var i = 0; i < resolvers.length; i++) {
@@ -70,6 +107,7 @@ function run(name, src) {
         }
         resolvers = [];
     });
+
     function input(index) {
         if (index < buffer.length) {
             return Promise.resolve(buffer.charCodeAt(index));
@@ -84,18 +122,5 @@ function run(name, src) {
         }
     }
 
-    try {
-        lazy.interpreter.run(
-            name,
-            src,
-            new lazy.stream.InputStream(input, 0),
-            x => process.stdout.write(x),
-            c => process.exit(c)
-        );
-    }
-    catch (error) {
-        console.error(String(error));
-        process.exit(1);
-        return;
-    }
+    return new lazy.stream.InputStream(input, 0);
 }
