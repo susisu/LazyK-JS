@@ -75,7 +75,11 @@ function run(name, src, stream) {
             stream,
             x => process.stdout.write(x),
             c => process.exit(c)
-        );
+        ).catch(error => {
+            console.error(String(error));
+            process.exit(1);
+            return;
+        });
     }
     catch (error) {
         console.error(String(error));
