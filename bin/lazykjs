@@ -77,9 +77,11 @@ function run(name, src, stream) {
             x => process.stdout.write(x),
             c => process.exit(c)
         ).catch(error => {
-            console.error(String(error));
-            process.exit(1);
-            return;
+            if (!(error instanceof lazy.lambda.Exit)) {
+                console.error(String(error));
+                process.exit(1);
+                return;
+            }
         });
     }
     catch (error) {
